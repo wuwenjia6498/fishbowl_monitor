@@ -15,6 +15,7 @@ async function getLatestMarketData(): Promise<EtfCardProps[]> {
     // 2. 使用 DISTINCT ON (symbol) 获取每个代码最新的一条记录
     // 3. 筛选 is_active = true 的配置
     // 4. v4.6: 包含 investment_logic 投资逻辑说明
+    // 5. v5.4: 包含 top_holdings 核心持仓数据
     const query = `
       SELECT DISTINCT ON (d.symbol)
         d.date,
@@ -29,11 +30,13 @@ async function getLatestMarketData(): Promise<EtfCardProps[]> {
         d.change_pct,
         d.trend_pct,
         c.name,
-        c.category as market,
+        c.category,
         c.industry_level,
         c.dominant_etf,
         c.sort_rank,
-        c.investment_logic
+        c.investment_logic,
+        c.top_holdings,
+        c.holdings_updated_at
       FROM fishbowl_daily d
       JOIN monitor_config c ON d.symbol = c.symbol
       WHERE c.is_active = true
@@ -55,12 +58,12 @@ async function getLatestMarketData(): Promise<EtfCardProps[]> {
       trend_pct: row.trend_pct !== null ? Number(row.trend_pct) : null,
     }));
 
-    // 按 sort_rank 排序（v4.2 纯ETF模式，保证固定顺序）
+    // 按 sort_rank 排序（v5.3 支持全球指数与贵金属）
     return data.sort((a, b) => {
       // 先按 category 排序（宽基在前）
-      if (a.market !== b.market) {
-        const isBroadA = a.market === '宽基' || a.market === 'broad';
-        const isBroadB = b.market === '宽基' || b.market === 'broad';
+      if (a.category !== b.category) {
+        const isBroadA = a.category === 'broad';
+        const isBroadB = b.category === 'broad';
         if (isBroadA && !isBroadB) return -1;
         if (!isBroadA && isBroadB) return 1;
       }

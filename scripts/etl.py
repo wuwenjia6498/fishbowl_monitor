@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-鱼盆趋势雷达 - ETL 每日更新脚本 v4.4 (指数+ETF混合双轨)
+鱼盆趋势雷达 - ETL 每日更新脚本 v5.3 (全球指数与贵金属现货扩展)
 功能：
-1. 宽基大势：获取原生指数数据 (使用 index_daily)
+1. 宽基大势：获取原生指数 + 全球指数 + 贵金属现货数据
 2. 行业轮动：获取 ETF 日线数据 (使用 fund_daily + qfq 前复权)
-3. 计算鱼盆信号（20日均线策略）
-4. 按 sort_rank 排序，保证固定顺序
-5. 只处理 is_active=true 或 is_system_bench=true 的资产
+3. 多接口路由：index_daily(A股) + index_global(全球) + sge_daily(贵金属)
+4. 计算鱼盆信号（20日均线策略）
+5. 按 sort_rank 排序，保证固定顺序
+6. 只处理 is_active=true 或 is_system_bench=true 的资产
 """
 
 import os
@@ -133,6 +134,56 @@ class DataFetcher:
 
             return df[['date', 'close']]
 
+        except Exception as e:
+            print(f"  ❌ 获取 {symbol} 数据时出错: {str(e)}")
+            return pd.DataFrame()
+
+    def fetch_history(self, symbol: str, category: str) -> pd.DataFrame:
+        """
+        多接口路由：根据资产类型自动选择对应的数据接口
+        v5.3: 支持 A股指数 + 全球指数 + 贵金属现货
+        """
+        try:
+            # 1. 行业轮动 -> 基金接口 (ETF)
+            if category == 'industry':
+                return self.get_etf_daily_data(symbol)
+            
+            # 2. 宽基大势 -> 混合接口路由
+            # A. 贵金属 (代码特征: Au, Ag 开头) -> 上海金交所接口
+            if symbol.startswith('Au') or symbol.startswith('Ag'):
+                print(f"  🔸 使用贵金属接口: {symbol}")
+                df = self.pro.sge_daily(ts_code=symbol)
+                time.sleep(0.35)
+                
+            # B. 全球指数 (代码特征: 纯字母不带点，或特定列表) -> 全球指数接口
+            elif symbol in ['IXIC', 'SPX', 'HSI', 'HKTECH', 'DJI', 'NDX']:
+                print(f"  🌍 使用全球指数接口: {symbol}")
+                df = self.pro.index_global(ts_code=symbol)
+                time.sleep(0.35)
+                
+            # C. A股指数 (代码特征: 数字开头) -> A股指数接口
+            else:
+                print(f"  🇨🇳 使用A股指数接口: {symbol}")
+                df = self.pro.index_daily(ts_code=symbol)
+                time.sleep(0.35)
+
+            # --- 数据清洗标准化 (Normalization) ---
+            # 必须确保返回的 DataFrame 包含且仅包含: ['date', 'close'] 且按日期升序
+            if df.empty: 
+                print(f"  ⚠️  警告: 没有获取到 {symbol} 的数据")
+                return pd.DataFrame()
+            
+            # 统一列名 (Tushare 不同接口返回的日期列名可能不同)
+            if 'trade_date' in df.columns:
+                df = df.rename(columns={'trade_date': 'date'}) 
+            
+            # 格式转换
+            df['date'] = pd.to_datetime(df['date'])
+            df['close'] = pd.to_numeric(df['close'])
+            df = df.sort_values('date').reset_index(drop=True)
+            
+            return df[['date', 'close']]
+            
         except Exception as e:
             print(f"  ❌ 获取 {symbol} 数据时出错: {str(e)}")
             return pd.DataFrame()
@@ -263,11 +314,8 @@ def process_symbol(symbol: str, name: str, category: str, fetcher: DataFetcher) 
     try:
         print(f"  处理: {name} ({symbol}) [{category}]")
 
-        # 根据类别选择获取数据的方法
-        if category in ['宽基', 'broad']:
-            df = fetcher.get_index_daily_data(symbol)
-        else:
-            df = fetcher.get_etf_daily_data(symbol)
+        # 使用新的多接口路由方法
+        df = fetcher.fetch_history(symbol, category)
             
         if df.empty:
             return None
@@ -346,7 +394,7 @@ def update_sort_rankings(conn, date):
 def main():
     """主执行函数"""
     print("=" * 60)
-    print("鱼盆趋势雷达 - ETL 更新 v4.4 (指数+ETF混合双轨)")
+    print("鱼盆趋势雷达 - ETL 更新 v5.3 (全球指数与贵金属现货扩展)")
     print("=" * 60)
 
     try:

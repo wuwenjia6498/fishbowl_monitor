@@ -5,10 +5,12 @@ import { ArrowUpRight, TrendingUp, TrendingDown, Activity, Hash } from 'lucide-r
 // 组合类型：包含配置信息的日报数据
 export interface EtfCardProps extends FishbowlDaily {
   name: string; // 来自 monitor_config
-  market: string; // 来自 monitor_config (category)
-  industry_level?: string; // 行业层级：'L1', 'L2', 'N/A'
+  category: string; // 来自 monitor_config (broad/industry)
+  industry_level?: string; // 行业层级：分组名称
   dominant_etf?: string | null; // 龙头ETF代码
   investment_logic?: string | null; // 投资逻辑说明（Markdown格式）
+  top_holdings?: string | null; // v5.4: 核心持仓（Markdown格式的前十大重仓股）
+  holdings_updated_at?: string | null; // v5.4: 持仓数据更新时间
   sort_rank?: number; // 排序等级
 }
 

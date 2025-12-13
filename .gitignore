@@ -64,3 +64,8 @@ nul
 *.log
 *.tmp
 .cache/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3

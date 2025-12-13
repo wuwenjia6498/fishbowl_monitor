@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Copy, Info, ChevronRight, HelpCircle } from "lucide-react";
+import { Copy, Info, ChevronRight, HelpCircle, ListTree } from "lucide-react";
 import { toast } from "sonner";
 import { EtfCardProps } from '@/components/EtfCard';
 import {
@@ -164,9 +164,6 @@ const ETF_NAME_MAPPING: Record<string, string> = {
   
   // 半导体相关
   '512480': '国泰中证全指半导体ETF',
-  
-  // 电子相关
-  '159732': '景顺长城中证消费电子主题ETF', // 重复，替换
 };
 
 // 获取ETF名称
@@ -176,8 +173,8 @@ const getEtfName = (etfCode: string): string => {
 
 const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
   // 分离宽基和行业数据
-  const broadData = data.filter(item => item.market === '宽基' || item.market === 'broad');
-  const industryData = data.filter(item => item.market === 'industry');
+  const broadData = data.filter(item => item.category === 'broad');
+  const industryData = data.filter(item => item.category === 'industry');
 
   // 分组：按 industry_level 分组
   const groupedIndustryData = React.useMemo(() => {
@@ -192,8 +189,24 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
     return groups;
   }, [industryData]);
 
+  // 分组：宽基数据按 industry_level 分组 (v5.3: 支持 A股指数 + 全球/商品)
+  const groupedBroadData = React.useMemo(() => {
+    const groups: Record<string, EtfCardProps[]> = {};
+    broadData.forEach(item => {
+      const groupName = item.industry_level || '其他';
+      if (!groups[groupName]) {
+        groups[groupName] = [];
+      }
+      groups[groupName].push(item);
+    });
+    return groups;
+  }, [broadData]);
+
   // 固定分组顺序
   const groupOrder = ['科技 (TMT)', '高端制造', '医药消费', '周期资源', '金融'];
+  
+  // 宽基分组顺序 (v5.3.1 - 分离全球指数和贵金属)
+  const broadGroupOrder = ['A股指数', '全球指数', '贵金属现货'];
 
   // 计算宽基大势指标
   const broadYesCount = broadData.filter(item => item.status === 'YES').length;
@@ -383,147 +396,173 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
 
         {/* Tab 1: 宽基大势 */}
         <TabsContent value="broad">
-          <Card>
-            <Table className="table-fixed">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[120px]">指数名称</TableHead>
-                  <TableHead className="w-[160px]">
-                    <HeaderWithTooltip
-                      title="现价 & MA20"
-                      content="上方为最新点位，下方为20日均线(MA20)。"
-                      align="right"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[100px]">
-                    <HeaderWithTooltip
-                      title="当日涨幅"
-                      content="相对于前一交易日的涨跌幅度。"
-                      align="right"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[80px]">
-                    <HeaderWithTooltip
-                      title="状态"
-                      content="鱼盆核心信号：价格站上20日线为YES(多)，跌破为NO(空)。含±1%缓冲。"
-                      align="center"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[100px]">
-                    <HeaderWithTooltip
-                      title="持续天数"
-                      content="当前趋势连续维持的交易日数量。"
-                      align="center"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[100px]">
-                    <HeaderWithTooltip
-                      title="区间涨幅"
-                      content="从信号发出日(变盘日)至今的累计涨跌幅，用于验证趋势盈利性。"
-                      align="right"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[100px]">
-                    <HeaderWithTooltip
-                      title="偏离度"
-                      content="现价距离MA20的乖离程度。>15%代表过热风险，<-15%代表超跌。"
-                      align="right"
-                    />
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {broadData.map((item) => {
-                  const isBullish = item.status === 'YES';
+          <div className="space-y-6">
+            {/* 按分组渲染多个表格 */}
+            {broadGroupOrder.map((groupName) => {
+              const groupItems = groupedBroadData[groupName];
+              if (!groupItems || groupItems.length === 0) return null;
 
-                  // 计算区间涨幅的颜色逻辑
-                  const getTrendPctColor = () => {
-                    if (!item.trend_pct) return 'text-muted-foreground';
+              return (
+                <div key={groupName}>
+                  {/* 分组标题 */}
+                  <h2 className="text-xl font-bold mb-4 px-2 border-l-4 border-blue-500 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-950/50">
+                    {groupName}
+                  </h2>
 
-                    // Status=YES 且 >0，显示红色 (盈利)
-                    if (isBullish && item.trend_pct > 0) return 'text-red-500';
+                  {/* 分组表格 */}
+                  <Card>
+                    <Table className="table-fixed">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[120px]">指数名称</TableHead>
+                          <TableHead className="w-[160px]">
+                            <HeaderWithTooltip
+                              title="现价 & MA20"
+                              content="上方为最新点位，下方为20日均线(MA20)。"
+                              align="right"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[100px]">
+                            <HeaderWithTooltip
+                              title="当日涨幅"
+                              content="相对于前一交易日的涨跌幅度。"
+                              align="right"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[80px]">
+                            <HeaderWithTooltip
+                              title="状态"
+                              content="鱼盆核心信号：价格站上20日线为YES(多)，跌破为NO(空)。含±1%缓冲。"
+                              align="center"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[100px]">
+                            <HeaderWithTooltip
+                              title="持续天数"
+                              content="当前趋势连续维持的交易日数量。"
+                              align="center"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[100px]">
+                            <HeaderWithTooltip
+                              title="区间涨幅"
+                              content="从信号发出日(变盘日)至今的累计涨跌幅，用于验证趋势盈利性。"
+                              align="right"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[100px]">
+                            <HeaderWithTooltip
+                              title="偏离度"
+                              content="现价距离MA20的乖离程度。>15%代表过热风险，<-15%代表超跌。"
+                              align="right"
+                            />
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {groupItems.map((item) => {
+                          const isBullish = item.status === 'YES';
 
-                    // Status=NO 且 <0，显示绿色 (避险/跌幅)
-                    if (!isBullish && item.trend_pct < 0) return 'text-green-500';
+                          // 计算区间涨幅的颜色逻辑
+                          const getTrendPctColor = () => {
+                            if (!item.trend_pct) return 'text-muted-foreground';
 
-                    // 其他情况：灰色
-                    return 'text-muted-foreground';
-                  };
+                            // Status=YES 且 >0，显示红色 (盈利)
+                            if (isBullish && item.trend_pct > 0) return 'text-red-500';
 
-                  return (
-                    <TableRow key={`${item.symbol}-${item.date}`}>
-                      {/* 指数名称 */}
-                      <TableCell className="w-[120px]">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground truncate">{item.name}</span>
-                          <span className="text-xs text-muted-foreground font-mono truncate">{item.symbol}</span>
-                        </div>
-                      </TableCell>
+                            // Status=NO 且 <0，显示绿色 (避险/跌幅)
+                            if (!isBullish && item.trend_pct < 0) return 'text-green-500';
 
-                      {/* 现价 & MA20 合并列 */}
-                      <TableCell className="w-[160px] text-right">
-                        <div className="flex flex-col items-end">
-                          <span className={`font-mono text-base font-semibold ${isBullish ? 'text-red-500' : 'text-green-500'}`}>
-                            {formatNumber(item.close_price)}
-                          </span>
-                          <span className="text-xs text-muted-foreground font-mono">
-                            MA20: {formatNumber(item.ma20_price)}
-                          </span>
-                        </div>
-                      </TableCell>
+                            // 其他情况：灰色
+                            return 'text-muted-foreground';
+                          };
 
-                      {/* 当日涨幅 */}
-                      <TableCell className="w-[100px] text-right">
-                        <span className={`font-mono font-medium ${
-                          item.change_pct === null || item.change_pct === undefined ? 'text-muted-foreground' :
-                          item.change_pct > 0 ? 'text-red-500' :
-                          item.change_pct < 0 ? 'text-green-500' :
-                          'text-muted-foreground'
-                        }`}>
-                          {item.change_pct !== null && item.change_pct !== undefined
-                            ? `${item.change_pct > 0 ? '+' : ''}${formatPercentage(item.change_pct)}`
-                            : '-'}
-                        </span>
-                      </TableCell>
+                          return (
+                            <TableRow key={`${item.symbol}-${item.date}`}>
+                              {/* 指数名称 */}
+                              <TableCell className="w-[120px]">
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-medium text-foreground truncate">{item.name}</span>
+                                    {/* 美股指数标注T-1数据 */}
+                                    {(item.symbol === 'IXIC' || item.symbol === 'SPX') && (
+                                      <Badge variant="outline" className="text-[10px] bg-amber-50 border-amber-200 text-amber-700 px-1 py-0 h-4">
+                                        T-1
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-muted-foreground font-mono truncate">{item.symbol}</span>
+                                </div>
+                              </TableCell>
 
-                      {/* 状态 */}
-                      <TableCell className="w-[80px] text-center">
-                        <Badge
-                          variant={isBullish ? 'danger' : 'success'}
-                          className="min-w-[50px] justify-center"
-                        >
-                          {item.status}
-                        </Badge>
-                      </TableCell>
+                              {/* 现价 & MA20 合并列 */}
+                              <TableCell className="w-[160px] text-right">
+                                <div className="flex flex-col items-end">
+                                  <span className={`font-mono text-base font-semibold ${isBullish ? 'text-red-500' : 'text-green-500'}`}>
+                                    {formatNumber(item.close_price)}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground font-mono">
+                                    MA20: {formatNumber(item.ma20_price)}
+                                  </span>
+                                </div>
+                              </TableCell>
 
-                      {/* 持续天数 */}
-                      <TableCell className="w-[100px] text-center">
-                        <span className={`font-mono font-medium ${item.signal_tag === 'BREAKOUT' ? 'text-red-600' : ''}`}>
-                          {item.duration_days}
-                        </span>
-                      </TableCell>
+                              {/* 当日涨幅 */}
+                              <TableCell className="w-[100px] text-right">
+                                <span className={`font-mono font-medium ${
+                                  item.change_pct === null || item.change_pct === undefined ? 'text-muted-foreground' :
+                                  item.change_pct > 0 ? 'text-red-500' :
+                                  item.change_pct < 0 ? 'text-green-500' :
+                                  'text-muted-foreground'
+                                }`}>
+                                  {item.change_pct !== null && item.change_pct !== undefined
+                                    ? `${item.change_pct > 0 ? '+' : ''}${formatPercentage(item.change_pct)}`
+                                    : '-'}
+                                </span>
+                              </TableCell>
 
-                      {/* 区间涨幅 */}
-                      <TableCell className="w-[100px] text-right">
-                        <span className={`font-mono font-medium ${getTrendPctColor()}`}>
-                          {item.trend_pct !== null && item.trend_pct !== undefined
-                            ? `${item.trend_pct > 0 ? '+' : ''}${formatPercentage(item.trend_pct)}`
-                            : '-'}
-                        </span>
-                      </TableCell>
+                              {/* 状态 */}
+                              <TableCell className="w-[80px] text-center">
+                                <Badge
+                                  variant={isBullish ? 'danger' : 'success'}
+                                  className="min-w-[50px] justify-center"
+                                >
+                                  {item.status}
+                                </Badge>
+                              </TableCell>
 
-                      {/* 偏离度 */}
-                      <TableCell className="w-[100px] text-right">
-                        <span className={`font-mono font-medium ${Math.abs(item.deviation_pct) > 0.15 ? 'text-orange-600' : item.deviation_pct > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                          {formatPercentage(item.deviation_pct)}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Card>
+                              {/* 持续天数 */}
+                              <TableCell className="w-[100px] text-center">
+                                <span className={`font-mono font-medium ${item.signal_tag === 'BREAKOUT' ? 'text-red-600' : ''}`}>
+                                  {item.duration_days}
+                                </span>
+                              </TableCell>
+
+                              {/* 区间涨幅 */}
+                              <TableCell className="w-[100px] text-right">
+                                <span className={`font-mono font-medium ${getTrendPctColor()}`}>
+                                  {item.trend_pct !== null && item.trend_pct !== undefined
+                                    ? `${item.trend_pct > 0 ? '+' : ''}${formatPercentage(item.trend_pct)}`
+                                    : '-'}
+                                </span>
+                              </TableCell>
+
+                              {/* 偏离度 */}
+                              <TableCell className="w-[100px] text-right">
+                                <span className={`font-mono font-medium ${Math.abs(item.deviation_pct) > 0.15 ? 'text-orange-600' : item.deviation_pct > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                  {formatPercentage(item.deviation_pct)}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                </div>
+              );
+            })}
+          </div>
         </TabsContent>
 
         {/* Tab 2: 行业轮动 - 分组结构化 */}
@@ -546,16 +585,23 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                     <Table className="table-fixed">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[120px]">板块名称</TableHead>
-                          <TableHead className="w-[120px]">
+                          <TableHead className="w-[110px]">板块名称</TableHead>
+                          <TableHead className="w-[110px]">
                             <HeaderWithTooltip
                               title="ETF 标的"
-                              content="该板块对应的龙头ETF。点击代码复制，点击图标查看深度逻辑。"
+                              content="该板块对应的龙头ETF。点击代码复制，悬浮图标查看深度逻辑。"
                               align="left"
                             />
                           </TableHead>
-                          <TableHead className="w-[60px] text-center">投资逻辑</TableHead>
-                          <TableHead className="w-[160px]">
+                          <TableHead className="w-[50px] text-center">逻辑</TableHead>
+                          <TableHead className="w-[50px]">
+                            <HeaderWithTooltip
+                              title="持仓"
+                              content="ETF 前十大重仓股，悬浮图标查看详情。数据来源于基金季报/半年报。"
+                              align="center"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[150px]">
                             <HeaderWithTooltip
                               title="现价 & MA20"
                               content="上方为最新点位，下方为20日均线(MA20)。"
@@ -569,7 +615,7 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                               align="center"
                             />
                           </TableHead>
-                          <TableHead className="w-[100px]">
+                          <TableHead className="w-[90px]">
                             <HeaderWithTooltip
                               title="偏离度"
                               content="价格相对MA20的乖离率。正值越大表示越偏离向上，负值越大表示偏离向下，可用于判断短期过热或超跌。"
@@ -593,23 +639,23 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                           return (
                             <TableRow key={`${item.symbol}-${item.date}`}>
                               {/* 板块名称 */}
-                              <TableCell className="w-[120px]">
-                                <span className="font-medium text-foreground truncate">{item.name}</span>
+                              <TableCell className="w-[110px]">
+                                <span className="font-medium text-foreground truncate text-sm">{item.name}</span>
                               </TableCell>
 
                               {/* ETF标的代码 */}
-                              <TableCell className="w-[120px]">
+                              <TableCell className="w-[110px]">
                                 <button
                                   onClick={() => copyToClipboard(item.symbol, item.name)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-sm transition-colors cursor-pointer border border-blue-200"
+                                  className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs transition-colors cursor-pointer border border-blue-200"
                                 >
                                   <span className="font-mono font-medium">{item.symbol}</span>
-                                  <Copy className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <Copy className="w-3 h-3 flex-shrink-0" />
                                 </button>
                               </TableCell>
 
                               {/* 投资逻辑按钮 */}
-                              <TableCell className="w-[60px] text-center">
+                              <TableCell className="w-[50px] text-center">
                                 <HoverCard openDelay={200} closeDelay={100}>
                                   <HoverCardTrigger asChild>
                                     <Button
@@ -643,8 +689,61 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                                 </HoverCard>
                               </TableCell>
 
+                              {/* 核心持仓 - HoverCard 悬浮弹窗 */}
+                              <TableCell className="w-[50px] text-center">
+                                {item.top_holdings ? (
+                                  <HoverCard openDelay={200} closeDelay={100}>
+                                    <HoverCardTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 hover:bg-muted"
+                                        title="查看核心持仓"
+                                      >
+                                        <ListTree className="h-4 w-4" />
+                                        <span className="sr-only">查看核心持仓</span>
+                                      </Button>
+                                    </HoverCardTrigger>
+                                    <HoverCardContent 
+                                      side="left" 
+                                      align="center" 
+                                      className="w-[400px] p-4"
+                                    >
+                                      <div className="space-y-3">
+                                        {/* 标题区域 */}
+                                        <div className="flex items-start gap-2 border-b pb-3">
+                                          <ListTree className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                          <div className="flex-1">
+                                            <h4 className="text-base font-semibold leading-tight">{item.name}</h4>
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <span className="text-xs font-mono text-muted-foreground">{item.symbol}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* 表格内容 */}
+                                        <div>
+                                          <MarkdownRenderer content={item.top_holdings} />
+                                        </div>
+                                      </div>
+                                    </HoverCardContent>
+                                  </HoverCard>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-muted-foreground/30 cursor-not-allowed"
+                                    title="暂无持仓数据"
+                                    disabled
+                                  >
+                                    <ListTree className="h-4 w-4" />
+                                    <span className="sr-only">暂无持仓数据</span>
+                                  </Button>
+                                )}
+                              </TableCell>
+
                               {/* 现价 & MA20 合并列 */}
-                              <TableCell className="w-[160px] text-right">
+                              <TableCell className="w-[150px] text-right">
                                 <div className="flex flex-col items-end">
                                   <span className={`font-mono text-base font-semibold ${isBullish ? 'text-red-500' : 'text-green-500'}`}>
                                     {formatNumber(item.close_price)}
@@ -659,14 +758,14 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                               <TableCell className="w-[80px] text-center">
                                 <Badge
                                   variant={isBullish ? 'danger' : 'success'}
-                                  className="min-w-[50px] justify-center"
+                                  className="min-w-[45px] justify-center text-xs"
                                 >
                                   {item.status}
                                 </Badge>
                               </TableCell>
 
                               {/* 偏离度 */}
-                              <TableCell className="w-[100px] text-right">
+                              <TableCell className="w-[90px] text-right">
                                 <span className={`font-mono font-medium ${Math.abs(item.deviation_pct) > 0.15 ? 'text-orange-600' : item.deviation_pct > 0 ? 'text-red-500' : 'text-green-500'}`}>
                                   {formatPercentage(item.deviation_pct)}
                                 </span>

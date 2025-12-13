@@ -14,6 +14,10 @@ CREATE TABLE monitor_config (
 
     -- [NEW v3.1] 关联 ETF 字段
     dominant_etf VARCHAR(20),              -- 龙头ETF代码（如 '512480'），若无则为NULL
+    
+    -- [NEW v5.4] ETF 持仓相关字段
+    top_holdings TEXT,                     -- 核心持仓 (Markdown 格式的前十大重仓股列表)
+    holdings_updated_at TIMESTAMP,         -- 持仓数据更新时间
 
     is_active BOOLEAN DEFAULT false,       -- 是否激活监控（用户关注）
     is_system_bench BOOLEAN DEFAULT false, -- 是否为系统标尺（用于计算气候看板）
