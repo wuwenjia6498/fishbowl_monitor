@@ -1,8 +1,8 @@
 import React from 'react';
 import pool from '@/lib/db';
-import FishbowlTable from '@/components/fishbowl-table';
+import FishbowlTable from '@/components/business/fishbowl-table';
 import { EtfCardProps } from '@/components/EtfCard';
-import ProjectIntro from '@/components/project-intro';
+import ProjectIntro from '@/components/business/project-intro';
 
 // 强制动态渲染，因为数据每天会变，我们需要获取最新 DB 状态
 export const dynamic = 'force-dynamic';

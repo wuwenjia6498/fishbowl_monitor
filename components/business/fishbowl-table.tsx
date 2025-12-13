@@ -571,8 +571,8 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                           </TableHead>
                           <TableHead className="w-[100px]">
                             <HeaderWithTooltip
-                              title="热度"
-                              content="即偏离度。反映短期资金拥挤程度，颜色越深代表越偏离均线。"
+                              title="偏离度"
+                              content="价格相对MA20的乖离率。正值越大表示越偏离向上，负值越大表示偏离向下，可用于判断短期过热或超跌。"
                               align="right"
                             />
                           </TableHead>
