@@ -49,7 +49,7 @@ async function getLatestMarketData(): Promise<EtfCardProps[]> {
     // 数据清洗/转换：确保数字类型正确 (pg driver 有时返回 string)
     const data: EtfCardProps[] = result.rows.map(row => ({
       ...row,
-      date: new Date(row.date).toISOString().split('T')[0], // 格式化日期
+      date: row.date, // 直接使用数据库日期，避免时区转换问题
       close_price: Number(row.close_price),
       ma20_price: Number(row.ma20_price),
       deviation_pct: Number(row.deviation_pct),
