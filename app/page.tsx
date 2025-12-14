@@ -3,6 +3,7 @@ import pool from '@/lib/db';
 import FishbowlTable from '@/components/business/fishbowl-table';
 import { EtfCardProps } from '@/components/EtfCard';
 import ProjectIntro from '@/components/business/project-intro';
+import MarketHeader from '@/components/market-header';
 
 // 强制动态渲染，因为数据每天会变，我们需要获取最新 DB 状态
 export const dynamic = 'force-dynamic';
@@ -103,9 +104,9 @@ export default async function Home() {
               <ProjectIntro />
             </div>
           </div>
-          
-          {/* 数据分隔线 */}
-          <div className="w-full h-px bg-border" />
+
+          {/* 全景战术驾驶舱 */}
+          <MarketHeader />
 
           {/* 鱼盆表格 - 分组渲染 */}
           <FishbowlTable data={marketData} />

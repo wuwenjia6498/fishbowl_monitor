@@ -1,0 +1,29 @@
+# 核心数据处理库
+pandas>=1.5.0
+
+# 数据库连接
+psycopg2-binary>=2.9.0
+
+# 金融数据API
+tushare>=1.2.0
+
+# 环境变量管理
+python-dotenv>=0.19.0
+
+# HTTP请求（用于API调用）
+requests>=2.25.0
+
+# 日期时间处理（Python标准库，但为了完整性列出）
+# datetime, timedelta - 标准库，无需安装
+
+# 类型提示（Python标准库，但为了完整性列出）
+# typing - 标准库，无需安装
+
+# JSON处理（Python标准库，但为了完整性列出）
+# json - 标准库，无需安装
+
+# 时间处理（Python标准库，但为了完整性列出）
+# time - 标准库，无需安装
+
+# 系统接口（Python标准库，但为了完整性列出）
+# sys, os - 标准库，无需安装

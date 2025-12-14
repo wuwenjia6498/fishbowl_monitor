@@ -83,6 +83,21 @@ ON CONFLICT (symbol) DO NOTHING;
 
 
 -- ================================================
+-- 3. 市场概览表（全景战术驾驶舱）
+-- ================================================
+DROP TABLE IF EXISTS market_overview CASCADE;
+
+CREATE TABLE market_overview (
+    date DATE PRIMARY KEY,                     -- 交易日期
+    data JSONB NOT NULL,                       -- 存储所有面板数据的 JSON
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引优化查询
+CREATE INDEX idx_market_overview_date ON market_overview(date DESC);
+
+
+-- ================================================
 -- 说明：
 -- 行业指数数据将通过 Python 脚本 init_db.py 自动初始化
 -- ================================================

@@ -286,107 +286,6 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
 
   return (
     <div className="space-y-6">
-      {/* 双维气候看板 - 专业优雅版 */}
-      <Card className="overflow-hidden bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-900/50 dark:to-slate-950">
-        <CardContent className="p-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/40">
-            {/* 左侧：大盘风向 */}
-            <div className={`p-6 transition-all duration-300 ${marketTrend.bgColor} hover:bg-opacity-100`}>
-              <div className="space-y-4">
-                {/* 标题区 */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-1 h-6 rounded-full ${marketTrend.color.replace('text-', 'bg-')}`}></div>
-                    <h3 className="text-sm font-medium text-muted-foreground">大盘风向</h3>
-                  </div>
-                  <Badge variant="outline" className="bg-white/60 backdrop-blur-sm border-black/5 font-normal text-xs px-2">
-                    宽基指数
-                  </Badge>
-                </div>
-
-                {/* 主数据区 */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{marketTrend.icon}</span>
-                    <div>
-                      <div className={`text-2xl font-bold tracking-tight ${marketTrend.color}`}>
-                        {marketTrend.label}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {marketTrend.description}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 数据指标 */}
-                  <div className="grid grid-cols-2 gap-3 pt-3">
-                    <div className="bg-white/50 dark:bg-slate-900/50 rounded-lg p-3 backdrop-blur-sm">
-                      <div className="text-xs text-muted-foreground mb-1.5">多头占比</div>
-                      <div className={`text-xl font-bold tabular-nums ${marketTrend.color}`}>
-                        {(broadYesRatio * 100).toFixed(0)}%
-                      </div>
-                    </div>
-                    <div className="bg-white/50 dark:bg-slate-900/50 rounded-lg p-3 backdrop-blur-sm">
-                      <div className="text-xs text-muted-foreground mb-1.5">指数数量</div>
-                      <div className="text-xl font-bold tabular-nums text-foreground/80">
-                        {broadYesCount}<span className="text-base text-muted-foreground mx-0.5">/</span>{broadTotal}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 右侧：市场热度 */}
-            <div className="p-6 bg-gradient-to-br from-blue-50/30 to-transparent dark:from-blue-950/20 dark:to-transparent">
-              <div className="space-y-4">
-                {/* 标题区 */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1 h-6 rounded-full bg-blue-500"></div>
-                    <h3 className="text-sm font-medium text-muted-foreground">市场热度</h3>
-                  </div>
-                  <Badge variant="outline" className="bg-white/60 backdrop-blur-sm border-black/5 font-normal text-xs px-2">
-                    行业板块
-                  </Badge>
-                </div>
-
-                {/* 主数据区 */}
-                <div className="space-y-3">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      {industryYesRatio.toFixed(1)}%
-                    </span>
-                    <span className="text-sm text-muted-foreground font-medium">行业多头率</span>
-                  </div>
-
-                  {/* 进度条区域 */}
-                  <div className="bg-white/60 dark:bg-slate-900/50 rounded-lg p-3 space-y-2.5 backdrop-blur-sm">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">多头行业</span>
-                      <span className="font-semibold text-foreground tabular-nums">
-                        {industryYesCount}<span className="text-muted-foreground mx-1">/</span>{industryTotal}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Progress 
-                        value={industryYesRatio} 
-                        className="h-2 bg-slate-200/60 dark:bg-slate-800/60" 
-                      />
-                    </div>
-                    <div className="flex justify-between text-[10px] text-muted-foreground/70 font-medium">
-                      <span>冰点</span>
-                      <span className="text-muted-foreground/50">·</span>
-                      <span>高潮</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* 分Tab展示：宽基指数 vs 行业板块 */}
       <Tabs defaultValue="broad" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -705,7 +604,7 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                                       </Button>
                                     </HoverCardTrigger>
                                     <HoverCardContent 
-                                      side="left" 
+                                      side="right" 
                                       align="center" 
                                       className="w-[400px] p-4"
                                     >
