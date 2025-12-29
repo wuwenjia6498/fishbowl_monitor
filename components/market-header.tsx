@@ -192,8 +192,8 @@ const MarketHeader: React.FC = () => {
             {data.us_share.map((item, index) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">
-                  {/* v6.7: 将纳斯达克显示为纳指100，与实际数据源 NDX 保持一致 */}
-                  {item.name === '纳斯达克' || item.name.includes('纳斯达克') ? '纳指100' : item.name}
+                  {/* v7.1: 后端已统一返回"纳指100"，直接显示即可 */}
+                  {item.name}
                 </span>
                 <div className="text-right">
                   <div className="font-mono text-sm font-medium text-gray-900">
@@ -277,6 +277,7 @@ const MarketHeader: React.FC = () => {
 };
 
 export default MarketHeader;
+
 
 
 
