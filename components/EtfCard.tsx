@@ -15,7 +15,10 @@ export interface EtfCardProps extends FishbowlDaily {
 }
 
 const EtfCard: React.FC<{ data: EtfCardProps }> = ({ data }) => {
-  const isBullish = data.status === TrendStatus.YES;
+  // v6.1 Bug修复：颜色判断必须基于deviation_pct而非status
+  // Rule of Truth: deviation > 0 -> 多头, deviation < 0 -> 空头
+  const isBullish = data.deviation_pct > 0;
+  const isBullishStatus = data.status === TrendStatus.YES;
   
   // 格式化百分比
   const formatPct = (val: number) => `${(val * 100).toFixed(2)}%`;

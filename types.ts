@@ -1,6 +1,13 @@
 // 鱼盆趋势雷达 (Fishbowl Monitor) 前端接口定义
 // 适配 Vercel Postgres 数据库
 
+// v5.9 Sparkline 数据点
+export interface SparklineDataPoint {
+  date: string;      // 日期 (格式: "MM-DD")
+  price: number;     // 收盘价
+  ma20: number;      // 20日均线
+}
+
 // 信号标签枚举
 export enum SignalTag {
   BREAKOUT = 'BREAKOUT',          // 启动：状态=YES 且 持续天数<=3
@@ -40,6 +47,7 @@ export interface FishbowlDaily {
   signal_tag: SignalTag;             // 信号标签
   change_pct?: number | null;        // v4.7: 当日涨幅 (小数形式，如 0.023 表示 2.3%)
   trend_pct?: number | null;         // v4.7: 区间涨幅 (从当前状态起始点到现在的涨幅)
+  sparkline_data?: SparklineDataPoint[];  // v5.9: 近30日趋势数据（用于迷你图展示）
   created_at: string;                // 创建时间 (ISO 8601)
   updated_at: string;                // 更新时间 (ISO 8601)
 }

@@ -126,8 +126,8 @@ const MarketHeader: React.FC = () => {
 
   return (
     <div className="w-full mb-8">
-      {/* 4个战术卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 3个战术卡片：A股、美股、领涨板块 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         
         {/* 卡片 1: A股 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -182,17 +182,19 @@ const MarketHeader: React.FC = () => {
 
         {/* 卡片 2: 美股 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4">
             <h3 className="font-semibold text-gray-900">
               美股
             </h3>
-            <span className="text-xs text-gray-400">T-1</span>
           </div>
           
           <div className="space-y-3">
             {data.us_share.map((item, index) => (
               <div key={index} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">{item.name}</span>
+                <span className="text-sm text-gray-600">
+                  {/* v6.7: 将纳斯达克显示为纳指100，与实际数据源 NDX 保持一致 */}
+                  {item.name === '纳斯达克' || item.name.includes('纳斯达克') ? '纳指100' : item.name}
+                </span>
                 <div className="text-right">
                   <div className="font-mono text-sm font-medium text-gray-900">
                     {formatPrice(item.price)}
@@ -206,7 +208,9 @@ const MarketHeader: React.FC = () => {
           </div>
         </div>
 
-        {/* 卡片 3: 黄金 */}
+        {/* 卡片 3: 黄金 - v7.0.2 已隐藏（yfinance API 限流问题）*/}
+        {/* 如需恢复，取消注释以下代码块 */}
+        {/* 
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">
@@ -227,8 +231,9 @@ const MarketHeader: React.FC = () => {
             </div>
           </div>
         </div>
+        */}
 
-        {/* 卡片 4: 领涨板块 */}
+        {/* 卡片 3: 领涨板块 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">
@@ -272,3 +277,9 @@ const MarketHeader: React.FC = () => {
 };
 
 export default MarketHeader;
+
+
+
+
+
+

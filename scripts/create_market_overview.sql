@@ -17,3 +17,9 @@ CREATE INDEX idx_market_overview_date ON market_overview(date DESC);
 
 -- 显示创建结果
 SELECT 'market_overview 表创建成功！' AS result;
+
+
+
+
+
+

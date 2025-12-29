@@ -53,6 +53,9 @@ CREATE TABLE fishbowl_daily (
     change_pct DECIMAL(10, 4),             -- 当日涨幅
     trend_pct DECIMAL(10, 4),              -- 区间涨幅（从当前状态起始点到现在）
 
+    -- v5.9 新增：迷你趋势图数据
+    sparkline_json JSONB,                  -- 近30日价格和MA20趋势数据
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE(symbol, date),                  -- 确保每个指数每天只有一条记录

@@ -29,18 +29,21 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Sparkline } from "@/components/ui/sparkline";
+import { TrendLens } from "@/components/trend-lens";
 
 interface FishbowlTableProps {
   data: EtfCardProps[];
 }
 
 // 信号标签映射
+// 中国习惯：多头信号用红色，空头信号用绿色
 const SIGNAL_TAG_CONFIG = {
-  BREAKOUT: { badge: '启动', color: 'text-green-600', bgColor: 'bg-green-50 dark:bg-green-950' },
-  STRONG: { badge: '主升', color: 'text-green-500', bgColor: 'bg-green-50 dark:bg-green-950' },
-  OVERHEAT: { badge: '过热', color: 'text-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-950' },
-  SLUMP: { badge: '弱势', color: 'text-red-500', bgColor: 'bg-red-50 dark:bg-red-950' },
-  EXTREME_BEAR: { badge: '超跌', color: 'text-blue-500', bgColor: 'bg-blue-50 dark:bg-blue-950' },
+  BREAKOUT: { badge: '启动', color: 'text-red-600', bgColor: 'bg-red-50 dark:bg-red-950' },      // 多头启动
+  STRONG: { badge: '主升', color: 'text-red-500', bgColor: 'bg-red-50 dark:bg-red-950' },         // 多头主升
+  OVERHEAT: { badge: '过热', color: 'text-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-950' }, // 多头过热警告
+  SLUMP: { badge: '弱势', color: 'text-green-500', bgColor: 'bg-green-50 dark:bg-green-950' },    // 空头弱势
+  EXTREME_BEAR: { badge: '超跌', color: 'text-blue-500', bgColor: 'bg-blue-50 dark:bg-blue-950' },  // 空头超跌机会
 };
 
 // 表头工具提示辅助组件
@@ -172,9 +175,12 @@ const getEtfName = (etfCode: string): string => {
 };
 
 const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
-  // 分离宽基和行业数据
+  // 分离不同类型的数据，包含所有分类
   const broadData = data.filter(item => item.category === 'broad');
-  const industryData = data.filter(item => item.category === 'industry');
+  const industryData = data.filter(item => item.category === 'industry' || item.category === 'sector');
+  const commodityData = data.filter(item => item.category === 'commodity');
+  const usData = data.filter(item => item.category === 'us');
+  const otherData = data.filter(item => !['broad', 'industry', 'sector', 'commodity', 'us'].includes(item.category || ''));
 
   // 分组：按 industry_level 分组
   const groupedIndustryData = React.useMemo(() => {
@@ -270,8 +276,14 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
     }
   };
 
-  // 格式化百分比
-  const formatPercentage = (value: number) => `${(value * 100).toFixed(2)}%`;
+  // 格式化百分比（保留3位小数，避免小数值被四舍五入成0）
+  const formatPercentage = (value: number) => {
+    const pct = value * 100;
+    // 如果绝对值小于0.01%，保留3位小数；否则保留2位
+    return Math.abs(pct) < 0.01 
+      ? `${pct.toFixed(3)}%`
+      : `${pct.toFixed(2)}%`;
+  };
 
   // 获取信号标签配置
   const getSignalTagConfig = (tag: string | null) => {
@@ -284,13 +296,30 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
     return Number(num).toFixed(decimals);
   };
 
+  // 确定有哪些分类有数据
+  const availableCategories = React.useMemo(() => {
+    const categories = [];
+    if (broadData.length > 0) categories.push({ key: 'broad', label: '宽基指数' });
+    if (industryData.length > 0) categories.push({ key: 'industry', label: '行业板块' });
+    if (commodityData.length > 0) categories.push({ key: 'commodity', label: '商品ETF' });
+    if (usData.length > 0) categories.push({ key: 'us', label: '美股指数' });
+    if (otherData.length > 0) categories.push({ key: 'other', label: '其他' });
+    return categories;
+  }, [broadData.length, industryData.length, commodityData.length, usData.length, otherData.length]);
+
+  // 默认选择第一个有数据的分类
+  const defaultTab = availableCategories[0]?.key || 'broad';
+
   return (
     <div className="space-y-6">
-      {/* 分Tab展示：宽基指数 vs 行业板块 */}
-      <Tabs defaultValue="broad" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="broad">宽基指数</TabsTrigger>
-          <TabsTrigger value="industry">行业板块</TabsTrigger>
+      {/* 动态Tab展示：根据实际数据生成标签 */}
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className={`grid w-full max-w-2xl grid-cols-${availableCategories.length}`}>
+          {availableCategories.map((cat) => (
+            <TabsTrigger key={cat.key} value={cat.key}>
+              {cat.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {/* Tab 1: 宽基大势 */}
@@ -314,7 +343,14 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-[120px]">指数名称</TableHead>
-                          <TableHead className="w-[160px]">
+                          <TableHead className="w-[140px]">
+                            <HeaderWithTooltip
+                              title="近期趋势 (90D)"
+                              content="近90日价格走势图，点击可放大查看并切换3M/6M/1Y周期。"
+                              align="center"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[140px]">
                             <HeaderWithTooltip
                               title="现价 & MA20"
                               content="上方为最新点位，下方为20日均线(MA20)。"
@@ -360,20 +396,18 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                       </TableHeader>
                       <TableBody>
                         {groupItems.map((item) => {
-                          const isBullish = item.status === 'YES';
+                          // v6.1 Bug修复：颜色判断必须基于deviation_pct而非status
+                          // Rule of Truth: deviation > 0 -> 红色(多头), deviation < 0 -> 绿色(空头)
+                          const isBullish = item.deviation_pct > 0;
+                          const isBullishStatus = item.status === 'YES';
 
                           // 计算区间涨幅的颜色逻辑
+                          // 与系统其他涨跌显示保持一致：红涨绿跌
                           const getTrendPctColor = () => {
-                            if (!item.trend_pct) return 'text-muted-foreground';
-
-                            // Status=YES 且 >0，显示红色 (盈利)
-                            if (isBullish && item.trend_pct > 0) return 'text-red-500';
-
-                            // Status=NO 且 <0，显示绿色 (避险/跌幅)
-                            if (!isBullish && item.trend_pct < 0) return 'text-green-500';
-
-                            // 其他情况：灰色
-                            return 'text-muted-foreground';
+                            if (item.trend_pct === null || item.trend_pct === undefined) return 'text-muted-foreground';
+                            if (item.trend_pct > 0) return 'text-red-500';  // 正数：红色
+                            if (item.trend_pct < 0) return 'text-green-500'; // 负数：绿色
+                            return 'text-muted-foreground'; // 零：灰色
                           };
 
                           return (
@@ -383,19 +417,28 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                                 <div className="flex flex-col">
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-medium text-foreground truncate">{item.name}</span>
-                                    {/* 美股指数标注T-1数据 */}
-                                    {(item.symbol === 'IXIC' || item.symbol === 'SPX') && (
-                                      <Badge variant="outline" className="text-[10px] bg-amber-50 border-amber-200 text-amber-700 px-1 py-0 h-4">
-                                        T-1
-                                      </Badge>
-                                    )}
                                   </div>
                                   <span className="text-xs text-muted-foreground font-mono truncate">{item.symbol}</span>
                                 </div>
                               </TableCell>
 
+                              {/* v5.10: TrendLens 趋势图点击放大 */}
+                              <TableCell className="w-[140px]">
+                                <div className="flex items-center justify-center py-1">
+                                  {item.sparkline_data && item.sparkline_data.length > 0 ? (
+                                    <TrendLens
+                                      data={item.sparkline_data}
+                                      name={item.name}
+                                      symbol={item.symbol}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">暂无数据</span>
+                                  )}
+                                </div>
+                              </TableCell>
+
                               {/* 现价 & MA20 合并列 */}
-                              <TableCell className="w-[160px] text-right">
+                              <TableCell className="w-[140px] text-right">
                                 <div className="flex flex-col items-end">
                                   <span className={`font-mono text-base font-semibold ${isBullish ? 'text-red-500' : 'text-green-500'}`}>
                                     {formatNumber(item.close_price)}
@@ -423,7 +466,7 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                               {/* 状态 */}
                               <TableCell className="w-[80px] text-center">
                                 <Badge
-                                  variant={isBullish ? 'danger' : 'success'}
+                                  variant={isBullishStatus ? 'danger' : 'success'}
                                   className="min-w-[50px] justify-center"
                                 >
                                   {item.status}
@@ -448,7 +491,13 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
 
                               {/* 偏离度 */}
                               <TableCell className="w-[100px] text-right">
-                                <span className={`font-mono font-medium ${Math.abs(item.deviation_pct) > 0.15 ? 'text-orange-600' : item.deviation_pct > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                <span className={`font-mono font-medium ${
+                                  Math.abs(item.deviation_pct) > 0.15 
+                                    ? 'text-orange-600'  // 过热/超跌：橙色警告
+                                    : item.deviation_pct > 0 
+                                      ? 'text-red-500'   // 正偏离：红色
+                                      : 'text-green-500' // 负偏离：绿色
+                                }`}>
                                   {formatPercentage(item.deviation_pct)}
                                 </span>
                               </TableCell>
@@ -500,10 +549,24 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                               align="center"
                             />
                           </TableHead>
-                          <TableHead className="w-[150px]">
+                          <TableHead className="w-[130px]">
+                            <HeaderWithTooltip
+                              title="近期趋势 (90D)"
+                              content="近90日价格走势图，点击可放大查看并切换3M/6M/1Y周期。"
+                              align="center"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[130px]">
                             <HeaderWithTooltip
                               title="现价 & MA20"
                               content="上方为最新点位，下方为20日均线(MA20)。"
+                              align="right"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[90px]">
+                            <HeaderWithTooltip
+                              title="当日涨幅"
+                              content="相对于前一交易日的涨跌幅度。"
                               align="right"
                             />
                           </TableHead>
@@ -514,6 +577,20 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                               align="center"
                             />
                           </TableHead>
+                          <TableHead className="w-[100px]">
+                            <HeaderWithTooltip
+                              title="持续天数"
+                              content="当前趋势连续维持的交易日数量。"
+                              align="center"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[100px]">
+                            <HeaderWithTooltip
+                              title="区间涨幅"
+                              content="从信号发出日(变盘日)至今的累计涨跌幅，用于验证趋势盈利性。"
+                              align="right"
+                            />
+                          </TableHead>
                           <TableHead className="w-[90px]">
                             <HeaderWithTooltip
                               title="偏离度"
@@ -521,19 +598,23 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                               align="right"
                             />
                           </TableHead>
-                          <TableHead className="w-[90px]">
-                            <HeaderWithTooltip
-                              title="信号"
-                              content="战术标签：启动(刚突破)、主升(稳健)、过热(乖离大)、超跌(负乖离大)。"
-                              align="center"
-                            />
-                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {groupItems.map((item) => {
-                          const isBullish = item.status === 'YES';
+                          // v6.1 Bug修复：颜色判断必须基于deviation_pct而非status
+                          // Rule of Truth: deviation > 0 -> 红色(多头), deviation < 0 -> 绿色(空头)
+                          const isBullish = item.deviation_pct > 0;
+                          const isBullishStatus = item.status === 'YES';
                           const signalConfig = getSignalTagConfig(item.signal_tag);
+
+                          // v7.1: 计算区间涨幅的颜色逻辑（与宽基指数保持一致）
+                          const getTrendPctColor = () => {
+                            if (item.trend_pct === null || item.trend_pct === undefined) return 'text-muted-foreground';
+                            if (item.trend_pct > 0) return 'text-red-500';  // 正数：红色
+                            if (item.trend_pct < 0) return 'text-green-500'; // 负数：绿色
+                            return 'text-muted-foreground'; // 零：灰色
+                          };
 
                           return (
                             <TableRow key={`${item.symbol}-${item.date}`}>
@@ -641,8 +722,23 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                                 )}
                               </TableCell>
 
+                              {/* v5.10: TrendLens 趋势图点击放大 */}
+                              <TableCell className="w-[130px]">
+                                <div className="flex items-center justify-center py-1">
+                                  {item.sparkline_data && item.sparkline_data.length > 0 ? (
+                                    <TrendLens
+                                      data={item.sparkline_data}
+                                      name={item.name}
+                                      symbol={item.symbol}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">暂无数据</span>
+                                  )}
+                                </div>
+                              </TableCell>
+
                               {/* 现价 & MA20 合并列 */}
-                              <TableCell className="w-[150px] text-right">
+                              <TableCell className="w-[130px] text-right">
                                 <div className="flex flex-col items-end">
                                   <span className={`font-mono text-base font-semibold ${isBullish ? 'text-red-500' : 'text-green-500'}`}>
                                     {formatNumber(item.close_price)}
@@ -653,27 +749,56 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
                                 </div>
                               </TableCell>
 
+                              {/* 当日涨幅 */}
+                              <TableCell className="w-[90px] text-right">
+                                <span className={`font-mono font-medium ${
+                                  item.change_pct === null || item.change_pct === undefined ? 'text-muted-foreground' :
+                                  item.change_pct > 0 ? 'text-red-500' :
+                                  item.change_pct < 0 ? 'text-green-500' :
+                                  'text-muted-foreground'
+                                }`}>
+                                  {item.change_pct !== null && item.change_pct !== undefined
+                                    ? `${item.change_pct > 0 ? '+' : ''}${formatPercentage(item.change_pct)}`
+                                    : '-'}
+                                </span>
+                              </TableCell>
+
                               {/* 状态 */}
                               <TableCell className="w-[80px] text-center">
                                 <Badge
-                                  variant={isBullish ? 'danger' : 'success'}
+                                  variant={isBullishStatus ? 'danger' : 'success'}
                                   className="min-w-[45px] justify-center text-xs"
                                 >
                                   {item.status}
                                 </Badge>
                               </TableCell>
 
-                              {/* 偏离度 */}
-                              <TableCell className="w-[90px] text-right">
-                                <span className={`font-mono font-medium ${Math.abs(item.deviation_pct) > 0.15 ? 'text-orange-600' : item.deviation_pct > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                  {formatPercentage(item.deviation_pct)}
+                              {/* v7.2: 持续天数（照搬宽基指数实现） */}
+                              <TableCell className="w-[100px] text-center">
+                                <span className={`font-mono font-medium ${item.signal_tag === 'BREAKOUT' ? 'text-red-600' : ''}`}>
+                                  {item.duration_days}
                                 </span>
                               </TableCell>
 
-                              {/* 信号标签 */}
-                              <TableCell className="w-[90px] text-center">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${signalConfig.color} ${signalConfig.bgColor} border border-current/20 w-fit`}>
-                                  {signalConfig.badge}
+                              {/* v7.1: 区间涨幅（照搬宽基指数实现） */}
+                              <TableCell className="w-[100px] text-right">
+                                <span className={`font-mono font-medium ${getTrendPctColor()}`}>
+                                  {item.trend_pct !== null && item.trend_pct !== undefined
+                                    ? `${item.trend_pct > 0 ? '+' : ''}${formatPercentage(item.trend_pct)}`
+                                    : '-'}
+                                </span>
+                              </TableCell>
+
+                              {/* 偏离度 */}
+                              <TableCell className="w-[90px] text-right">
+                                <span className={`font-mono font-medium ${
+                                  Math.abs(item.deviation_pct) > 0.15
+                                    ? 'text-orange-600'  // 过热/超跌：橙色警告
+                                    : item.deviation_pct > 0
+                                      ? 'text-red-500'   // 正偏离：红色
+                                      : 'text-green-500' // 负偏离：绿色
+                                }`}>
+                                  {formatPercentage(item.deviation_pct)}
                                 </span>
                               </TableCell>
                             </TableRow>
@@ -687,6 +812,301 @@ const FishbowlTable: React.FC<FishbowlTableProps> = ({ data }) => {
             })}
           </div>
         </TabsContent>
+
+        {/* Tab 3: 商品ETF */}
+        {commodityData.length > 0 && (
+          <TabsContent value="commodity">
+            <div className="space-y-6">
+              <Card>
+                <Table className="table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[120px]">指数名称</TableHead>
+                      <TableHead className="w-[110px]">ETF代码</TableHead>
+                      <TableHead className="w-[140px] text-center">近期趋势</TableHead>
+                      <TableHead className="w-[140px] text-right">现价 & MA20</TableHead>
+                      <TableHead className="w-[100px] text-right">当日涨幅</TableHead>
+                      <TableHead className="w-[80px] text-center">状态</TableHead>
+                      <TableHead className="w-[90px] text-right">偏离度</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {commodityData.map((item) => {
+                      // v6.1 Bug修复：颜色判断必须基于deviation_pct而非status
+                      // Rule of Truth: deviation > 0 -> 红色(多头), deviation < 0 -> 绿色(空头)
+                      const isBullish = item.deviation_pct > 0;
+                      const isBullishStatus = item.status === 'YES';
+                      const signalConfig = getSignalTagConfig(item.signal_tag);
+
+                      return (
+                        <TableRow key={`${item.symbol}-${item.date}`}>
+                          <TableCell className="w-[120px]">
+                            <span className="font-medium text-foreground truncate">{item.name}</span>
+                          </TableCell>
+                          <TableCell className="w-[110px]">
+                            <button
+                              onClick={() => copyToClipboard(item.symbol, item.name)}
+                              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                            >
+                              <span className="font-mono text-sm">{item.symbol}</span>
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </TableCell>
+                          <TableCell className="w-[140px]">
+                            <div className="flex items-center justify-center py-1">
+                              {item.sparkline_data && item.sparkline_data.length > 0 ? (
+                                <TrendLens
+                                  data={item.sparkline_data}
+                                  name={item.name}
+                                  symbol={item.symbol}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">暂无数据</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[140px] text-right">
+                            <div className="flex flex-col items-end">
+                              <span className={`font-mono text-base font-semibold ${isBullish ? 'text-red-500' : 'text-green-500'}`}>
+                                {formatNumber(item.close_price)}
+                              </span>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                MA20: {formatNumber(item.ma20_price)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[100px] text-right">
+                            <span className={`font-mono font-medium ${
+                              item.change_pct === null || item.change_pct === undefined ? 'text-muted-foreground' :
+                              item.change_pct > 0 ? 'text-red-500' :
+                              item.change_pct < 0 ? 'text-green-500' :
+                              'text-muted-foreground'
+                            }`}>
+                              {item.change_pct !== null && item.change_pct !== undefined
+                                ? `${item.change_pct > 0 ? '+' : ''}${formatPercentage(item.change_pct)}`
+                                : '-'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="w-[80px] text-center">
+                            <Badge
+                              variant={isBullishStatus ? 'danger' : 'success'}
+                              className="min-w-[45px] justify-center text-xs"
+                            >
+                              {item.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="w-[90px] text-right">
+                            <span className={`font-mono font-medium ${Math.abs(item.deviation_pct) > 0.15 ? 'text-orange-600' : item.deviation_pct > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                              {formatPercentage(item.deviation_pct)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* Tab 4: 美股指数 */}
+        {usData.length > 0 && (
+          <TabsContent value="us">
+            <div className="space-y-6">
+              <Card>
+                <Table className="table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[120px]">指数名称</TableHead>
+                      <TableHead className="w-[110px]">ETF代码</TableHead>
+                      <TableHead className="w-[140px] text-center">近期趋势</TableHead>
+                      <TableHead className="w-[140px] text-right">现价 & MA20</TableHead>
+                      <TableHead className="w-[100px] text-right">当日涨幅</TableHead>
+                      <TableHead className="w-[80px] text-center">状态</TableHead>
+                      <TableHead className="w-[90px] text-right">偏离度</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usData.map((item) => {
+                      // v6.1 Bug修复：颜色判断必须基于deviation_pct而非status
+                      // Rule of Truth: deviation > 0 -> 红色(多头), deviation < 0 -> 绿色(空头)
+                      const isBullish = item.deviation_pct > 0;
+                      const isBullishStatus = item.status === 'YES';
+                      const signalConfig = getSignalTagConfig(item.signal_tag);
+
+                      return (
+                        <TableRow key={`${item.symbol}-${item.date}`}>
+                          <TableCell className="w-[120px]">
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium text-foreground truncate">{item.name}</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[110px]">
+                            <button
+                              onClick={() => copyToClipboard(item.symbol, item.name)}
+                              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                            >
+                              <span className="font-mono text-sm">{item.symbol}</span>
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </TableCell>
+                          <TableCell className="w-[140px]">
+                            <div className="flex items-center justify-center py-1">
+                              {item.sparkline_data && item.sparkline_data.length > 0 ? (
+                                <TrendLens
+                                  data={item.sparkline_data}
+                                  name={item.name}
+                                  symbol={item.symbol}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">暂无数据</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[140px] text-right">
+                            <div className="flex flex-col items-end">
+                              <span className={`font-mono text-base font-semibold ${isBullish ? 'text-red-500' : 'text-green-500'}`}>
+                                {formatNumber(item.close_price)}
+                              </span>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                MA20: {formatNumber(item.ma20_price)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[100px] text-right">
+                            <span className={`font-mono font-medium ${
+                              item.change_pct === null || item.change_pct === undefined ? 'text-muted-foreground' :
+                              item.change_pct > 0 ? 'text-red-500' :
+                              item.change_pct < 0 ? 'text-green-500' :
+                              'text-muted-foreground'
+                            }`}>
+                              {item.change_pct !== null && item.change_pct !== undefined
+                                ? `${item.change_pct > 0 ? '+' : ''}${formatPercentage(item.change_pct)}`
+                                : '-'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="w-[80px] text-center">
+                            <Badge
+                              variant={isBullishStatus ? 'danger' : 'success'}
+                              className="min-w-[45px] justify-center text-xs"
+                            >
+                              {item.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="w-[90px] text-right">
+                            <span className={`font-mono font-medium ${Math.abs(item.deviation_pct) > 0.15 ? 'text-orange-600' : item.deviation_pct > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                              {formatPercentage(item.deviation_pct)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
+
+        {/* Tab 5: 其他分类 */}
+        {otherData.length > 0 && (
+          <TabsContent value="other">
+            <div className="space-y-6">
+              <Card>
+                <Table className="table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[120px]">指数名称</TableHead>
+                      <TableHead className="w-[110px]">ETF代码</TableHead>
+                      <TableHead className="w-[140px] text-center">近期趋势</TableHead>
+                      <TableHead className="w-[140px] text-right">现价 & MA20</TableHead>
+                      <TableHead className="w-[100px] text-right">当日涨幅</TableHead>
+                      <TableHead className="w-[80px] text-center">状态</TableHead>
+                      <TableHead className="w-[90px] text-right">偏离度</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {otherData.map((item) => {
+                      // v6.1 Bug修复：颜色判断必须基于deviation_pct而非status
+                      // Rule of Truth: deviation > 0 -> 红色(多头), deviation < 0 -> 绿色(空头)
+                      const isBullish = item.deviation_pct > 0;
+                      const isBullishStatus = item.status === 'YES';
+                      const signalConfig = getSignalTagConfig(item.signal_tag);
+
+                      return (
+                        <TableRow key={`${item.symbol}-${item.date}`}>
+                          <TableCell className="w-[120px]">
+                            <span className="font-medium text-foreground truncate">{item.name}</span>
+                          </TableCell>
+                          <TableCell className="w-[110px]">
+                            <button
+                              onClick={() => copyToClipboard(item.symbol, item.name)}
+                              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                            >
+                              <span className="font-mono text-sm">{item.symbol}</span>
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </TableCell>
+                          <TableCell className="w-[140px]">
+                            <div className="flex items-center justify-center py-1">
+                              {item.sparkline_data && item.sparkline_data.length > 0 ? (
+                                <TrendLens
+                                  data={item.sparkline_data}
+                                  name={item.name}
+                                  symbol={item.symbol}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">暂无数据</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[140px] text-right">
+                            <div className="flex flex-col items-end">
+                              <span className={`font-mono text-base font-semibold ${isBullish ? 'text-red-500' : 'text-green-500'}`}>
+                                {formatNumber(item.close_price)}
+                              </span>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                MA20: {formatNumber(item.ma20_price)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[100px] text-right">
+                            <span className={`font-mono font-medium ${
+                              item.change_pct === null || item.change_pct === undefined ? 'text-muted-foreground' :
+                              item.change_pct > 0 ? 'text-red-500' :
+                              item.change_pct < 0 ? 'text-green-500' :
+                              'text-muted-foreground'
+                            }`}>
+                              {item.change_pct !== null && item.change_pct !== undefined
+                                ? `${item.change_pct > 0 ? '+' : ''}${formatPercentage(item.change_pct)}`
+                                : '-'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="w-[80px] text-center">
+                            <Badge
+                              variant={isBullishStatus ? 'danger' : 'success'}
+                              className="min-w-[45px] justify-center text-xs"
+                            >
+                              {item.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="w-[90px] text-right">
+                            <span className={`font-mono font-medium ${Math.abs(item.deviation_pct) > 0.15 ? 'text-orange-600' : item.deviation_pct > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                              {formatPercentage(item.deviation_pct)}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

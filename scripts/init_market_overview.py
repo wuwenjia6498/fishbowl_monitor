@@ -87,3 +87,9 @@ def create_market_overview_table():
 if __name__ == "__main__":
     success = create_market_overview_table()
     sys.exit(0 if success else 1)
+
+
+
+
+
+

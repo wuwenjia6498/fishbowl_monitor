@@ -38,7 +38,7 @@ BROAD_INDICES = [
     {"sort_id": 8, "code": "899050.BJ", "name": "北证50", "group": "A股指数", "etf_label": "北证50"},
     
     # --- 全球指数 (接口: pro.index_global) ---
-    {"sort_id": 20, "code": "IXIC", "name": "纳指100", "group": "全球指数", "etf_label": "纳指"},
+    {"sort_id": 20, "code": "NDX", "name": "纳指100", "group": "全球指数", "etf_label": "纳指"},  # v6.5: 修正为 NDX (NASDAQ-100)
     {"sort_id": 21, "code": "SPX", "name": "标普500", "group": "全球指数", "etf_label": "标普"},
     {"sort_id": 22, "code": "HSI", "name": "恒生指数", "group": "全球指数", "etf_label": "恒指"},
     {"sort_id": 23, "code": "HKTECH", "name": "恒生科技", "group": "全球指数", "etf_label": "恒生科技"},

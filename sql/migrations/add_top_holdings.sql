@@ -15,3 +15,8 @@ ADD COLUMN IF NOT EXISTS holdings_updated_at TIMESTAMP;
 COMMENT ON COLUMN monitor_config.top_holdings IS '核心持仓：Markdown 格式的前十大重仓股列表';
 COMMENT ON COLUMN monitor_config.holdings_updated_at IS '持仓数据最后更新时间';
 
+
+
+
+
+
