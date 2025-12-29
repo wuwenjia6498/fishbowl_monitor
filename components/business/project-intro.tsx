@@ -63,10 +63,10 @@ export default function ProjectIntro() {
                   <span>价格有效跌破 MA20 下方 1%，确立下跌趋势（空头信号）</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="inline-flex items-center justify-center w-16 h-6 rounded text-xs font-medium bg-orange-500/10 text-orange-600 dark:text-orange-400 shrink-0">
-                    HOLD
+                  <span className="inline-flex items-center justify-center w-16 h-6 rounded text-xs font-medium bg-gray-500/10 text-gray-600 dark:text-gray-400 shrink-0">
+                    缓冲带
                   </span>
-                  <span>在 ±1% 缓冲区间内，维持原有状态不变（震荡观望）</span>
+                  <span>在 ±1% 区间内，继续维持原有 YES 或 NO 状态（防止震荡频繁切换）</span>
                 </li>
               </ul>
             </div>

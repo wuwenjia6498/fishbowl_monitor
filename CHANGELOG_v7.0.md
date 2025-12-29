@@ -1,4 +1,41 @@
-# v7.0 更新日志
+# v7.0+ 更新日志
+
+## v7.1.1 (2025-01-29)
+
+### 修复美股指数数据不一致问题 🔧
+
+#### 问题描述
+- 市场概览使用 IXIC（纳斯达克综合指数，~23,000点）
+- 全球指数表格使用 NDX（纳斯达克100指数，~25,000点）
+- 导致同一页面显示的"纳斯达克"数据不一致
+
+#### 解决方案
+- **统一使用 NDX**（纳斯达克100指数）
+- 优先使用 yfinance 获取实时数据
+- 失败时自动回退到 Tushare（除 NDX 外）
+- 兼容两种数据格式，自动计算涨跌幅
+
+#### 配置 GitHub Actions 定时任务
+
+- **新增**：`.github/workflows/daily_update.yml`
+- **触发机制**：
+  - 美股时段：北京时间 08:00（周二至周六）
+  - A股时段：北京时间 19:00（周一至周五）
+  - 支持手动触发（workflow_dispatch）
+- **运行环境**：Ubuntu Latest + Python 3.11
+- **环境变量**：从 Secrets 读取 `DATABASE_URL` 和 `TUSHARE_TOKEN`
+
+#### 修复内容
+- ✅ 修改 `scripts/etl.py` - ETL 数据源统一
+- ✅ 修改 `components/market-header.tsx` - 前端显示简化
+- ✅ 创建 `.github/workflows/daily_update.yml` - 定时任务配置
+- ✅ 升级 Python 版本到 3.11（修复 yfinance 兼容性）
+- ✅ 新增详细修复文档 `docs/fix_us_index_inconsistency_v7.1.md`
+
+#### 相关文档
+- 详细修复说明：[docs/fix_us_index_inconsistency_v7.1.md](docs/fix_us_index_inconsistency_v7.1.md)
+
+---
 
 ## v7.0.2 (2025-12-29)
 
@@ -77,12 +114,12 @@
 - [ ] 考虑添加其他避险资产数据（如比特币、美债）
 - [ ] 优化 API 重试机制
 - [ ] 添加数据监控告警
-- [ ] 定时任务自动化（GitHub Actions）
+- [x] 定时任务自动化（GitHub Actions）✅ v7.1.1 已完成
 
 ---
 
-**版本**：v7.0.2  
-**日期**：2025-12-29  
+**最新版本**：v7.1.1  
+**更新日期**：2025-01-29  
 **作者**：AI Assistant  
 **状态**：✅ 已部署
 

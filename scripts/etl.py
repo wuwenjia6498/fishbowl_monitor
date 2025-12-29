@@ -813,9 +813,10 @@ def update_market_overview(fetcher: DataFetcher, db_conn: DatabaseConnection):
     # ========================================
     print("\n🌎 2/4 获取美股风向数据...")
     try:
-        # v7.1: 统一使用主流指数代码，与全球指数表格保持一致
+        # 市场概览：展示综合指数（代表整体市场情绪）
+        # 注：全球指数表格展示 NDX（可投资标的），两者用途不同
         us_indices = [
-            ('NDX', '纳指100'),    # 纳斯达克100指数（更常用）
+            ('IXIC', '纳斯达克'),  # 综合指数（3000+只股票，代表整体市场）
             ('SPX', '标普500'),
             ('DJI', '道琼斯')
         ]
@@ -823,46 +824,20 @@ def update_market_overview(fetcher: DataFetcher, db_conn: DatabaseConnection):
         us_data = []
         for symbol, name in us_indices:
             try:
-                # v7.1: 优先使用 yfinance（实时数据），失败时回退到 Tushare
-                df = fetcher.get_us_index_data_yfinance(symbol)
-                
-                # 如果 yfinance 失败，回退到 Tushare（NDX除外，Tushare不支持）
-                if df.empty:
-                    if symbol == 'NDX':
-                        print(f"  ⚠️  yfinance 失败且 Tushare 不支持 {symbol}，跳过")
-                        us_data.append({'name': name, 'price': 0, 'change': 0})
-                        continue
-                    
-                    # 其他指数回退到 Tushare
-                    print(f"  🔄 yfinance 失败，回退到 Tushare: {symbol}")
-                    df = fetcher.pro.index_global(ts_code=symbol)
-                    time.sleep(0.35)
-                
-                # 解析数据（兼容 yfinance 和 Tushare 两种格式）
+                # 优先使用 Tushare index_global（稳定可靠）
+                df = fetcher.pro.index_global(ts_code=symbol)
+                time.sleep(0.35)
                 
                 if not df.empty:
-                    # 兼容 yfinance 和 Tushare 两种数据格式
-                    df = df.sort_values('date' if 'date' in df.columns else 'trade_date', ascending=False)
+                    df = df.sort_values('trade_date', ascending=False)
                     latest = df.iloc[0]
-                    
-                    # 计算涨跌幅（yfinance 需要手动计算）
-                    if 'pct_chg' in latest and pd.notna(latest['pct_chg']):
-                        # Tushare 格式（已包含涨跌幅）
-                        change_pct = float(latest['pct_chg'])
-                    elif len(df) >= 2:
-                        # yfinance 格式（手动计算涨跌幅）
-                        today_close = float(latest['close'])
-                        yesterday_close = float(df.iloc[1]['close'])
-                        change_pct = ((today_close - yesterday_close) / yesterday_close) * 100
-                    else:
-                        change_pct = 0.0
                     
                     us_data.append({
                         'name': name,
                         'price': float(latest['close']),
-                        'change': change_pct
+                        'change': float(latest['pct_chg']) if 'pct_chg' in latest and pd.notna(latest['pct_chg']) else 0.0
                     })
-                    print(f"  ✓ {name}: {latest['close']:.2f} ({'+' if change_pct >= 0 else ''}{change_pct:.2f}%)")
+                    print(f"  ✓ {name}: {latest['close']:.2f} ({latest.get('pct_chg', 0):+.2f}%)")
             except Exception as e:
                 print(f"  ⚠️  {name} 数据获取失败: {str(e)}")
                 us_data.append({'name': name, 'price': 0, 'change': 0})

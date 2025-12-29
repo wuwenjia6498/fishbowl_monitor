@@ -192,7 +192,6 @@ const MarketHeader: React.FC = () => {
             {data.us_share.map((item, index) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">
-                  {/* v7.1: 后端已统一返回"纳指100"，直接显示即可 */}
                   {item.name}
                 </span>
                 <div className="text-right">

@@ -5,7 +5,7 @@
 [![Version](https://img.shields.io/badge/version-7.2.0-blue.svg)](https://github.com/wuwenjia6498/fishbowl_monitor)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16.0-black.svg)](https://nextjs.org/)
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 
 ## 🎯 系统概述
 
@@ -50,6 +50,12 @@
 - 🎯 支持排序功能，方便筛选老妖股或新启动板块
 - 🎨 BREAKOUT 信号红色高亮显示
 
+### v7.1.1 (2025-01-29)
+- ✅ **配置 GitHub Actions 定时任务**（Python 3.11）
+- 📊 优化美股数据获取逻辑和容错机制
+- 💡 明确指数用途：市场概览用 IXIC（市场情绪），全球指数表格用 NDX（投资标的）
+- 📝 完善项目文档和技术说明
+
 ### v7.1.0 (2025-12-29)
 - ✨ **行业板块增加区间涨幅字段**
 - 📊 与宽基指数功能对齐
@@ -79,8 +85,8 @@
 
 - **框架**: Next.js 16 (App Router)
 - **数据库**: Vercel Postgres (Neon)
-- **ETL**: Python 3.10+ + Tushare + psycopg2
-- **数据源**: Tushare API + yfinance
+- **ETL**: Python 3.11+ + Tushare + psycopg2
+- **数据源**: Tushare API + yfinance（美股实时数据）
 
 ### 前端
 
@@ -92,7 +98,7 @@
 ### 部署
 
 - **平台**: Vercel
-- **CI/CD**: GitHub Actions（可选）
+- **CI/CD**: GitHub Actions（定时任务：美股时段 08:00 / A股时段 19:00）
 - **SSL**: 强制 SSL 连接，确保安全性
 
 ## 📁 项目结构
@@ -147,6 +153,9 @@ pip install -r scripts/requirements.txt
 ```bash
 # 执行 SQL 脚本创建表结构
 psql $POSTGRES_URL < sql/schema.sql
+
+# 或使用 Python 脚本初始化（推荐）
+python scripts/init_db.py
 ```
 
 ### 4. 运行 ETL 更新
@@ -155,11 +164,22 @@ psql $POSTGRES_URL < sql/schema.sql
 # 首次运行或修复数据
 python scripts/fix_sparkline_v7.py
 
-# 每日更新（建议定时任务）
+# 每日更新（本地测试）
 python scripts/etl.py
 ```
 
-### 5. 启动开发服务器
+### 5. 配置 GitHub Actions（推荐）
+
+将项目推送到 GitHub 后：
+1. 进入 **Settings** → **Secrets and variables** → **Actions**
+2. 添加以下 Secrets：
+   - `DATABASE_URL`: Vercel Postgres 连接字符串
+   - `TUSHARE_TOKEN`: Tushare API Token
+3. 定时任务将自动运行：
+   - 美股时段：北京时间 08:00（周二至周六）
+   - A股时段：北京时间 19:00（周一至周五）
+
+### 6. 启动开发服务器
 
 ```bash
 npm run dev
@@ -169,11 +189,11 @@ npm run dev
 
 ## 📊 监控资产
 
-### 宽基指数（8个）
+### 宽基指数（13个）
 
 - **A股指数**: 上证50、沪深300、创业板指、科创50、中证500、中证1000、中证2000、北证50
-- **全球指数**: 标普500、恒生指数、恒生科技
-- **贵金属现货**: 上海金、上海银
+- **全球指数**: 纳指100（NDX）、标普500（SPX）、恒生指数（HSI）、恒生科技（HKTECH）
+- **贵金属现货**: 上海金（Au99.99）、上海银（Ag(T+D)）
 
 ### 行业 ETF（25+个）
 
@@ -212,8 +232,10 @@ npm run dev
 ### 4. 全景战术驾驶舱
 
 - **A股基准**：上证指数 + 深证成指 + 两市成交额
-- **美股风向**：纳指100 + 标普500 + 道琼斯（T-1）
+- **美股风向**：纳斯达克（IXIC）+ 标普500（SPX）+ 道琼斯（DJI）
 - **领涨先锋**：Top 3 行业 ETF（实时）
+
+> 💡 **设计说明：** 市场概览展示**综合指数**（IXIC，3000+只股票，代表整体市场情绪），而全球指数表格展示**纳指100**（NDX，可投资标的）。两者用途不同，不是重复。
 
 ## 📈 使用场景
 
@@ -248,6 +270,7 @@ npm run dev
 遇到问题请查看：
 - [v7.0 问题排查指南](v7.0_troubleshooting.md)
 - [v7.0 更新日志](CHANGELOG_v7.0.md)
+- [v7.1 美股指数修复文档](docs/fix_us_index_inconsistency_v7.1.md)
 
 ### 常见问题
 
