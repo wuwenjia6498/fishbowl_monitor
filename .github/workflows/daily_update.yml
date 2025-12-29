@@ -2,11 +2,9 @@ name: Daily Fishbowl ETL
 
 on:
   schedule:
-    # 1. 美股/黄金更新 (周二到周六 北京时间 08:00 / UTC 00:00)
     - cron: '0 0 * * 2-6'
-    # 2. A股/港股更新 (周一到周五 北京时间 19:00 / UTC 11:00)
     - cron: '0 11 * * 1-5'
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   run-etl:
@@ -21,12 +19,12 @@ jobs:
       with:
         python-version: '3.9'
         cache: 'pip'
-        cache-dependency-path: 'scripts/requirements.txt'
 
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         if [ -f scripts/requirements.txt ]; then pip install -r scripts/requirements.txt; fi
+        pip install yfinance
 
     - name: Run ETL Script
       env:
@@ -34,11 +32,3 @@ jobs:
         TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
       run: |
         python scripts/etl.py
-
-    - name: Display Execution Summary
-      if: always()
-      run: |
-        echo "=========================================="
-        echo "ETL 执行完成"
-        echo "触发时间: $(date)"
-        echo "=========================================="
