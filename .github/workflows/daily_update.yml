@@ -1,19 +1,12 @@
-name: Daily Market Data ETL
+name: Daily Fishbowl ETL
 
 on:
   schedule:
-    # 1. 美股/黄金更新
-    # 北京时间 08:00 = UTC 00:00
-    # 运行范围: 周二到周六 (因为美股周一的收盘是周二早上)
+    # 1. 美股/黄金更新 (周二到周六 北京时间 08:00 / UTC 00:00)
     - cron: '0 0 * * 2-6'
-    
-    # 2. A股/港股更新
-    # 北京时间 19:00 = UTC 11:00 (避开高峰，确保 Tushare 数据已到位)
-    # 运行范围: 周一到周五
+    # 2. A股/港股更新 (周一到周五 北京时间 19:00 / UTC 11:00)
     - cron: '0 11 * * 1-5'
-    
-  # 允许手动在 GitHub 界面触发 (方便测试)
-  workflow_dispatch:
+  workflow_dispatch: # 允许手动触发
 
 jobs:
   run-etl:
@@ -27,7 +20,8 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-        cache: 'pip' # 开启缓存加速安装
+        cache: 'pip'
+        cache-dependency-path: 'scripts/requirements.txt'
 
     - name: Install Dependencies
       run: |
@@ -36,24 +30,15 @@ jobs:
 
     - name: Run ETL Script
       env:
-        # 这些 Secrets 需要用户在 GitHub 仓库设置中配置
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
       run: |
         python scripts/etl.py
 
-    - name: Run on Failure
-      if: failure()
+    - name: Display Execution Summary
+      if: always()
       run: |
-        echo "ETL script failed. Please check the logs above."
-        echo "Common issues:"
-        echo "1. Tushare API limit exceeded"
-        echo "2. Database connection failed"
-        echo "3. Non-trading day (no data available)"
-        echo "4. API token expired or invalid"
-
-    - name: Success Notification
-      if: success()
-      run: |
-        echo "ETL script completed successfully!"
-        echo "Market data has been updated."
+        echo "=========================================="
+        echo "ETL 执行完成"
+        echo "触发时间: $(date)"
+        echo "=========================================="
