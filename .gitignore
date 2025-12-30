@@ -1,68 +1,71 @@
-# Dependencies
+# 依赖目录
 node_modules/
-/.pnp
+.pnp
 .pnp.js
 
-# Testing
-/coverage
+# 测试覆盖率
+coverage/
 
-# Next.js
-/.next/
-/out/
+# Next.js 构建输出
+.next/
+out/
+build/
+dist/
 
-# Production
+# 生产环境
 /build
 
-# Misc
-.DS_Store
-*.pem
-
-# Debug
+# 调试日志
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
-# Local env files
+# 本地环境变量文件（包含敏感信息）
 .env
 .env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Vercel
+# Vercel 部署
 .vercel
 
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# Python
+# Python 相关
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
 venv/
 ENV/
+env/
 .venv
 
-# IDEs
+# 操作系统文件
+.DS_Store
+Thumbs.db
+nul
+
+# IDE 配置
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
-Thumbs.db
-.DS_Store
-
-# Temporary files
+# 临时文件
 *.log
 *.tmp
 .cache/
 
-# Database
+# 数据库文件
 *.db
 *.sqlite
-
-# Scripts output
-scripts/__pycache__/
+*.sqlite3

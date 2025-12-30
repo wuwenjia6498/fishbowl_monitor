@@ -488,30 +488,36 @@ class FishbowlCalculator:
             # 完整日期格式 YYYY-MM-DD
             date_str = row['date'].strftime('%Y-%m-%d') if hasattr(row['date'], 'strftime') else str(row['date'])
             # v6.3 Bug修复：增加精度到4位小数，避免小数值时精度丢失导致偏离度被抹平
+            # v7.1: 新增 change 字段（当日涨幅）
+            change_value = round(float(row['change_pct'] * 100), 2) if pd.notna(row['change_pct']) else 0.0
             sparkline_data.append({
                 "date": date_str,
                 "price": round(float(row['close']), 4),      # 4位小数
-                "ma20": round(float(row['ma20_price']), 4)  # 4位小数
+                "ma20": round(float(row['ma20_price']), 4),  # 4位小数
+                "change": change_value                        # v7.1: 当日涨幅 (百分比)
             })
 
         # v6.9: 手动拼接今日数据（如果提供了今日数据且历史数据未包含今天）
+        # v7.1: 注意 - 手动拼接时 change 字段可能缺失，设为 0.0
         if today_date and today_price is not None and today_ma20 is not None:
             # 检查历史数据的最后一条日期
             if sparkline_data:
                 last_date = sparkline_data[-1]['date']
                 if last_date != today_date:
-                    # 历史数据不包含今天，手动追加
+                    # 历史数据不包含今天，手动追加（change 需要从调用方传入或设为0）
                     sparkline_data.append({
                         "date": today_date,
                         "price": round(float(today_price), 4),
-                        "ma20": round(float(today_ma20), 4)
+                        "ma20": round(float(today_ma20), 4),
+                        "change": 0.0  # v7.1: 手动拼接时无法计算 change，设为 0
                     })
             else:
                 # 历史数据为空，直接添加今日数据
                 sparkline_data.append({
                     "date": today_date,
                     "price": round(float(today_price), 4),
-                    "ma20": round(float(today_ma20), 4)
+                    "ma20": round(float(today_ma20), 4),
+                    "change": 0.0  # v7.1: 手动拼接时无法计算 change，设为 0
                 })
 
         return json.dumps(sparkline_data)
@@ -519,9 +525,11 @@ class FishbowlCalculator:
     @staticmethod
     def append_to_sparkline(current_chart_json: str, today_date: str, 
                            today_price: float, today_ma20: float, 
+                           today_change: float = 0.0,
                            max_days: int = 250) -> str:
         """
         v7.0: 增量追加模式 - 将今日数据追加到已有的 sparkline 中
+        v7.1: 新增 today_change 参数，支持涨跌幅字段
 
         核心逻辑：
         1. 读取现有数据
@@ -534,6 +542,7 @@ class FishbowlCalculator:
             today_date: 今日日期（格式：YYYY-MM-DD）
             today_price: 今日收盘价
             today_ma20: 今日 MA20
+            today_change: v7.1 今日涨幅（百分比形式，如 1.52 表示 +1.52%）
             max_days: 保留的最大天数（默认250天）
 
         Returns:
@@ -553,10 +562,12 @@ class FishbowlCalculator:
             current_chart = []
 
         # 2. 构造今日数据点
+        # v7.1: 新增 change 字段
         new_point = {
             "date": today_date,
             "price": round(float(today_price), 4),
-            "ma20": round(float(today_ma20), 4)
+            "ma20": round(float(today_ma20), 4),
+            "change": round(float(today_change), 2)  # v7.1: 当日涨幅 (保留2位小数)
         }
 
         # 3. 增量追加与去重
@@ -1172,11 +1183,15 @@ def main():
                 # ✅ 增量模式：已有历史数据，只追加今日数据点
                 print(f"  📊 [{symbol}] 增量追加模式")
                 try:
+                    # v7.1: 计算今日涨幅（百分比形式）
+                    today_change = float(last_row['change_pct'] * 100) if pd.notna(last_row['change_pct']) else 0.0
+                    
                     sparkline_json = FishbowlCalculator.append_to_sparkline(
                         current_chart_json=existing_sparkline,
                         today_date=date_str,
                         today_price=float(last_row['close']),
                         today_ma20=float(last_row['ma20_price']),
+                        today_change=today_change,  # v7.1: 传入今日涨幅
                         max_days=250
                     )
                     

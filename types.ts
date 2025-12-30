@@ -6,6 +6,7 @@ export interface SparklineDataPoint {
   date: string;      // 日期 (格式: "MM-DD")
   price: number;     // 收盘价
   ma20: number;      // 20日均线
+  change: number;    // v7.1: 当日涨幅 (百分比形式，如 1.52 表示 +1.52%)
 }
 
 // 信号标签枚举

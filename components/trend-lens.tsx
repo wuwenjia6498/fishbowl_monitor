@@ -32,6 +32,7 @@ type TimeRange = '3M' | '6M' | '1Y';
 
 /**
  * 自定义 Tooltip 内容
+ * v7.1: 新增"当日涨幅"字段显示
  */
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload || !payload.length) {
@@ -40,9 +41,16 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
   const price = payload.find((p: any) => p.dataKey === 'price')?.value;
   const ma20 = payload.find((p: any) => p.dataKey === 'ma20')?.value;
+  
+  // v7.1: 从 payload 中获取 change 字段（当日涨幅）
+  const change = payload[0]?.payload?.change || 0;
 
   // 计算偏离度
   const deviation = ma20 ? ((price - ma20) / ma20) * 100 : 0;
+  
+  // v7.1: 当日涨幅配色逻辑
+  const changeColor = change > 0 ? 'text-red-500' : change < 0 ? 'text-green-500' : 'text-gray-500';
+  const changeText = change > 0 ? `+${change.toFixed(2)}%` : `${change.toFixed(2)}%`;
 
   return (
     <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border shadow-lg">
@@ -56,6 +64,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             {price?.toFixed(2)}
           </span>
         </div>
+        
+        {/* v7.1: 新增当日涨幅显示 */}
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-gray-600 dark:text-gray-400">当日涨幅:</span>
+          <span className={`font-mono font-semibold ${changeColor}`}>
+            {changeText}
+          </span>
+        </div>
+        
         <div className="flex items-center justify-between gap-4">
           <span className="text-gray-600 dark:text-gray-400">MA20:</span>
           <span className="font-mono text-gray-700 dark:text-gray-300">
